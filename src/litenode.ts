@@ -24,13 +24,10 @@ class LiteNode {
         this.node = await createLibp2p({
             addresses: {
                 listen: [
-                    `/ip6/::/tcp/${port}`,
-                    `/ip6/::/tcp/${port + 1}/ws`,
-                    `/ip4/0.0.0.0/tcp/${port}`,
+                    `/ip4/0.0.0.0/tcp/${port}/ws`,
                 ]
             },
             transports: [
-                tcp(),
                 webSockets()
             ],
             connectionEncrypters: [noise()],
@@ -111,6 +108,8 @@ class LiteNode {
         for (const addr of this.node.getMultiaddrs()) {
             print(`${addr.toString()}/p2p/${this.node.peerId.toString()}`);
         }
+
+        print(`Render PORT: ${process.env.PORT}`);
 
         this.node.services.pubsub.subscribe('bytechain:transactions');
         this.node.services.pubsub.subscribe('bytechain:blocks');
