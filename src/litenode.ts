@@ -106,7 +106,7 @@ class LiteNode {
         print(`ByteChain Lite Node started with peer ID: ${this.node.peerId.toString()}`);
 
         for (const addr of this.node.getMultiaddrs()) {
-            print(`${addr.toString()}/p2p/${this.node.peerId.toString()}`);
+            print(`${addr.toString()}}`);
         }
 
         print(`Render PORT: ${process.env.PORT}`);
