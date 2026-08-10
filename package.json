@@ -15,7 +15,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "tsc & node ./dist/main"
+    "build": "tsc",
+    "start": "node dist/main"
   },
   "dependencies": {
     "@chainsafe/libp2p-noise": "^17.0.0",
