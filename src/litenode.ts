@@ -1,6 +1,5 @@
 import { createLibp2p } from 'libp2p';
 import { webSockets } from '@libp2p/websockets';
-import { tcp } from '@libp2p/tcp';
 import { noise } from '@chainsafe/libp2p-noise';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { identify } from '@libp2p/identify';
@@ -8,7 +7,9 @@ import { kadDHT } from '@libp2p/kad-dht';
 import { gossipsub } from '@libp2p/gossipsub';
 import { mdns } from '@libp2p/mdns';
 import { ping } from '@libp2p/ping';
-import { lpStream } from 'it-length-prefixed-stream';
+import { peerIdFromPrivateKey } from '@libp2p/peer-id';
+import { privateKeyFromProtobuf } from '@libp2p/crypto/keys';
+import { fromString } from 'uint8arrays/from-string';
 
 
 const print = (s: any) => {
@@ -21,7 +22,22 @@ class LiteNode {
     MEMPOOL_SYNC_PROTOCOL = '/bytechain/mempool/0.0.1';
 
     async start(port: number) {
+        let peerId;
+        let privateKey;
+        const privateKeyHex = process.env.PRIVATE_KEY_HEX;
+
+        if (privateKeyHex) {
+            try {
+                privateKey = privateKeyFromProtobuf(fromString(privateKeyHex, 'hex'));
+                peerId = peerIdFromPrivateKey(privateKey);
+                print(`Loaded static Peer ID from environment variables ${peerId}`);
+            } catch (err) {
+                console.error("Failed to load static private key:", err);
+            }
+        }
+
         this.node = await createLibp2p({
+            ...(privateKey != null ? { privateKey } : {}),
             addresses: {
                 listen: [
                     `/ip4/0.0.0.0/tcp/${port}/ws`,
@@ -31,7 +47,7 @@ class LiteNode {
                 webSockets()
             ],
             connectionEncrypters: [noise()],
-            streamMuxers: [yamux()],
+            streamMuxers: [yamux() as any],
             peerDiscovery: [
                 mdns({ interval: 20e3 }),
             ],
@@ -51,40 +67,6 @@ class LiteNode {
         this.node.addEventListener('peer:discovery', (evt: any) => {
             const peer_id = evt.detail.id;
             this.node.dial(peer_id).catch((_: any) => {});
-        });
-
-        await this.node.handle(this.CHAIN_SYNC_PROTOCOL, async ({ stream }: any) => {
-            const lp = lpStream(stream);
-
-            try {
-                while (true) {
-                    const data = await lp.read();
-                    if (!data) break;
-
-                    const request = JSON.parse(new TextDecoder().decode(data.subarray()));
-
-                    if (request.type === 'GET_HEIGHT') {
-                        await lp.write(new TextEncoder().encode(JSON.stringify({ height: 0 })));
-                    } else if (request.type === 'GET_BLOCKS') {
-                        await lp.write(new TextEncoder().encode(JSON.stringify({ blocks: [] })));
-                    }
-                }
-            } catch (err) {
-                console.error(`Lite node chain sync error: ${err instanceof Error ? err.message : err}`);
-            } finally {
-                await stream.close();
-            }
-        });
-
-        await this.node.handle(this.MEMPOOL_SYNC_PROTOCOL, async ({ stream }: any) => {
-            const lp = lpStream(stream);
-            try {
-                await lp.write(new TextEncoder().encode(JSON.stringify([])));
-            } catch (err) {
-                console.error(`Lite node mempool sync error: ${err instanceof Error ? err.message : err}`);
-            } finally {
-                stream.close();
-            }
         });
 
         this.node.addEventListener('peer:connect', (evt: any) => {
