@@ -10,10 +10,6 @@ import { ping } from '@libp2p/ping';
 import { peerIdFromPrivateKey } from '@libp2p/peer-id';
 import { privateKeyFromProtobuf } from '@libp2p/crypto/keys';
 import { fromString } from 'uint8arrays/from-string';
-import express from 'express';
-import cors from 'cors';
-import type { Request, Response } from 'express';
-
 
 const print = (s: any) => {
     console.dir(s)
@@ -21,27 +17,12 @@ const print = (s: any) => {
 
 class LiteNode {
     node: any;
-    private api_port: number;
-    public app: express.Application;
+    port: number;
     CHAIN_SYNC_PROTOCOL = '/bytechain/sync/0.0.1';
     MEMPOOL_SYNC_PROTOCOL = '/bytechain/mempool/0.0.1';
 
-    constructor(api_port: number) {
-        this.api_port = api_port;
-        this.app = express();
-        this.setup_api();
-    }
-
-    private setup_api() {
-        this.app.use(cors({ origin: "*" }));
-        this.app.use(express.json());
-
-        this.app.get("/status", (_: Request, res: Response) => {
-            res.status(200).json({
-                status: "running",
-                api_port: this.api_port,
-            });
-        });
+    constructor(port: number) {
+        this.port = port;
     }
 
     async start() {
@@ -63,7 +44,7 @@ class LiteNode {
             ...(private_key != null ? { private_key } : {}),
             addresses: {
                 listen: [
-                    `/ip4/0.0.0.0/tcp/${this.api_port + 1}/ws`,
+                    `/ip4/0.0.0.0/tcp/${this.port}/wss`,
                 ]
             },
             transports: [
@@ -123,29 +104,6 @@ class LiteNode {
     async stop() {
         await this.node.stop();
         print('Lite Node stopped');
-    }
-
-    async start_api(server?: any) {
-
-        if (server) {
-            server
-                .listen(this.api_port, () => {
-                  print(`HTTP server started on port ${this.api_port}`);
-                })
-                .on("error", (_: any) => {
-                  print(`Failed to start HTTP server on port ${this.api_port}`);
-                  process.exit(1);
-                });
-        } else {
-            this.app
-                .listen(this.api_port, () => {
-                  print(`HTTP server started on port ${this.api_port}`);
-                })
-                .on("error", (_: any) => {
-                  print(`Failed to start HTTP server on port ${this.api_port}`);
-                  process.exit(1);
-                });
-        }
     }
 }
 
