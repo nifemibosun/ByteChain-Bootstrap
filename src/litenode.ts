@@ -63,7 +63,7 @@ class LiteNode {
             ...(private_key != null ? { private_key } : {}),
             addresses: {
                 listen: [
-                    `/ip4/0.0.0.0/tcp/${this.api_port}/ws`,
+                    `/ip4/0.0.0.0/tcp/${this.api_port + 1}/ws`,
                 ]
             },
             transports: [
