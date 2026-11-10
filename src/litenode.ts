@@ -26,25 +26,22 @@ class LiteNode {
     }
 
     async start() {
-        let peer_id;
-        let private_key;
         const privateKeyHex = process.env.PRIVATE_KEY_HEX;
 
-        if (privateKeyHex) {
-            try {
-                private_key = privateKeyFromProtobuf(fromString(privateKeyHex, 'hex'));
-                peer_id = peerIdFromPrivateKey(private_key);
-                print(`Loaded static Peer ID from environment variables ${peer_id}`);
-            } catch (err) {
-                console.error("Failed to load static private key:", err);
-            }
+        if (!privateKeyHex) {
+            throw new Error("PRIVATE_KEY_HEX is required for the bootstrap node");
         }
 
+        const private_key = privateKeyFromProtobuf(fromString(privateKeyHex, 'hex'));
+        const peer_id = peerIdFromPrivateKey(private_key);
+
+        print(`Bootstrap identity: ${peer_id.toString()}`);
+
         this.node = await createLibp2p({
-            ...(private_key != null ? { private_key } : {}),
+            privateKey: private_key,
             addresses: {
                 listen: [
-                    `/ip4/0.0.0.0/tcp/${this.port}/wss`,
+                    `/ip4/0.0.0.0/tcp/${this.port}/ws`,
                 ]
             },
             transports: [
